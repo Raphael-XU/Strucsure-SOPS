@@ -45,6 +45,9 @@ const ExecutivePanel = () => {
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [showMembersList, setShowMembersList] = useState(false);
+  const [memberSearchTerm, setMemberSearchTerm] = useState('');
+  const [memberSortBy, setMemberSortBy] = useState('name');
+  const [memberFilterDept, setMemberFilterDept] = useState('all');
   const [projectForm, setProjectForm] = useState({
     name: '',
     description: '',
@@ -87,7 +90,7 @@ const ExecutivePanel = () => {
     
     // Set up real-time listeners for users and projects
     const usersUnsubscribe = onSnapshot(
-      query(collection(db, 'users'), where('isActive', '==', true)),
+      query(collection(db, 'users')),
       (snapshot) => {
         const usersData = snapshot.docs.map(doc => ({
           id: doc.id,
@@ -220,24 +223,32 @@ const ExecutivePanel = () => {
 
       await addDoc(collection(db, 'announcements'), newAnnouncement);
       
-      // Create notifications for all members and executives
-      const membersAndExecs = allUsers.filter(u => 
-        (u.role === 'member' || u.role === 'executive') && u.id !== currentUser.uid
-      );
-      
-      const notificationPromises = membersAndExecs.map(user => 
-        addDoc(collection(db, 'notifications'), {
-          userId: user.id,
-          title: newAnnouncement.title,
-          content: newAnnouncement.content,
-          type: 'announcement',
-          read: false,
-          createdAt: serverTimestamp(),
-          createdBy: currentUser.uid
-        })
-      );
+      // Create notifications for all members, executives, and admins
+const allRecipients = allUsers.filter(u => 
+  u.role === 'member' || u.role === 'executive' || 
+  u.role === 'admin'
+);
 
-      await Promise.all(notificationPromises);
+console.log('All users in system:', allUsers.length, allUsers);
+console.log('Filtered recipients:', allRecipients.length, allRecipients);
+console.log('Current user role:', userRole, 'ID:', currentUser.uid);
+
+const notificationPromises = allRecipients.map(user => {
+  console.log('Creating notification for user:', user.email, user.role);
+  return addDoc(collection(db, 'notifications'), {
+    userId: user.id,
+    title: newAnnouncement.title,
+    content: newAnnouncement.content,
+    type: 'announcement',
+    read: false,
+    createdAt: serverTimestamp(),
+    createdBy: currentUser.uid
+  });
+});
+
+await Promise.all(notificationPromises);
+console.log('All notifications created successfully');
+
 
       // Log activity
       await logEvent({ 
@@ -350,6 +361,27 @@ const ExecutivePanel = () => {
     setShowProjectModal(true);
   };
 
+    const handleDeleteAnnouncement = async (announcementId) => {
+    if (!window.confirm('Are you sure you want to delete this announcement?')) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'announcements', announcementId));
+      await logEvent({ 
+        type: 'announcement_delete', 
+        userId: currentUser.uid,
+        email: currentUser.email,
+        action: `${userRole === 'admin' ? 'Admin' : 'Executive'} ${currentUser.email} deleted announcement`,
+        description: announcementId
+      });
+      toast.success('Announcement deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting announcement:', error);
+      toast.error('Failed to delete announcement');
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed': return 'text-green-600 bg-green-100';
@@ -381,6 +413,32 @@ const ExecutivePanel = () => {
   const activeProjectsCount = projects.filter(p => p.status === 'in-progress').length;
   const organizedDepartments = organizeDepartments();
   const nonAdminUsers = allUsers.filter(u => u.role !== 'admin');
+  // Debug logging - REMOVE AFTER TESTING
+console.log('All users:', allUsers.length, allUsers);
+console.log('Non-admin users:', nonAdminUsers.length, nonAdminUsers);
+console.log('Active users count:', activeUsersCount);
+
+  // Filter and sort members for the modal
+  const filteredMembers = nonAdminUsers
+    .filter(user => {
+      const matchesSearch = memberSearchTerm === '' || 
+        `${user.firstName} ${user.lastName}`.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(memberSearchTerm.toLowerCase());
+      const matchesDept = memberFilterDept === 'all' || user.department === memberFilterDept;
+      return matchesSearch && matchesDept;
+    })
+    .sort((a, b) => {
+      switch (memberSortBy) {
+        case 'name':
+          return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
+        case 'role':
+          return a.role.localeCompare(b.role);
+        case 'department':
+          return (a.department || '').localeCompare(b.department || '');
+        default:
+          return 0;
+      }
+    });
 
   if (loading) {
     return (
@@ -727,35 +785,47 @@ const ExecutivePanel = () => {
             <div className="p-6">
               <div className="space-y-4">
                 {announcements.length > 0 ? (
-                  announcements.map((announcement) => (
-                    <div key={announcement.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <Megaphone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{announcement.title}</h4>
-                        </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {announcement.createdAt && announcement.createdAt.toDate 
-                            ? new Date(announcement.createdAt.toDate()).toLocaleDateString()
-                            : 'Recently'}
-                        </span>
-                      </div>
-                      <p className="text-gray-700 dark:text-gray-300 mb-2">{announcement.content}</p>
-                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          By: {announcement.createdByName || 'Executive'}
-                        </span>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          announcement.role === 'admin' 
-                            ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        }`}>
-                          {announcement.role?.charAt(0).toUpperCase() + announcement.role?.slice(1)}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
+  announcements.map((announcement) => (
+    <div key={announcement.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-shadow relative">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <Megaphone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{announcement.title}</h4>
+        </div>
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          {announcement.createdAt && announcement.createdAt.toDate 
+            ? new Date(announcement.createdAt.toDate()).toLocaleDateString()
+            : 'Recently'}
+        </span>
+      </div>
+      <p className="text-gray-700 dark:text-gray-300 mb-2">{announcement.content}</p>
+      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          By: {announcement.createdByName || 'Executive'}
+        </span>
+        <div className="flex items-center space-x-2">
+          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+            announcement.role === 'admin' 
+              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+          }`}>
+            {announcement.role?.charAt(0).toUpperCase() + announcement.role?.slice(1)}
+          </span>
+          {(userRole === 'executive' || userRole === 'admin') && (
+            <button
+              onClick={() => handleDeleteAnnouncement(announcement.id)}
+              className="p-1 hover:bg-red-100 dark:hover:bg-red-900 rounded"
+              title="Delete announcement"
+            >
+              <X className="h-4 w-4 text-red-500" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  ))
+) : (
+
                   <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                     <Megaphone className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                     <p>No announcements yet</p>
@@ -773,47 +843,97 @@ const ExecutivePanel = () => {
           <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">All Members ({activeUsersCount})</h3>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">All Members ({filteredMembers.length})</h3>
                 <button
-                  onClick={() => setShowMembersList(false)}
+                  onClick={() => {
+                    setShowMembersList(false);
+                    setMemberSearchTerm('');
+                    setMemberFilterDept('all');
+                    setMemberSortBy('name');
+                  }}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="space-y-2">
-                {nonAdminUsers.map((user) => (
-                  <div key={user.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {user.firstName} {user.lastName}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        user.role === 'executive' 
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                          : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                      }`}>
-                        {user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}
-                      </span>
-                      {user.department && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">{user.department}</span>
-                      )}
-                    </div>
+
+              {/* Search and Filter Controls */}
+              <div className="mb-6 space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="Search by name or email..."
+                      value={memberSearchTerm}
+                      onChange={(e) => setMemberSearchTerm(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    />
                   </div>
-                ))}
+                  <div className="flex gap-2">
+                    <select
+                      value={memberFilterDept}
+                      onChange={(e) => setMemberFilterDept(e.target.value)}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="all">All Departments</option>
+                      {departments.map((dept) => (
+                        <option key={dept.name} value={dept.name}>{dept.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={memberSortBy}
+                      onChange={(e) => setMemberSortBy(e.target.value)}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="name">Sort by Name</option>
+                      <option value="role">Sort by Role</option>
+                      <option value="department">Sort by Department</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {filteredMembers.length > 0 ? (
+                  filteredMembers.map((user) => (
+                    <div key={user.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {user.firstName} {user.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          user.role === 'executive' 
+                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                            : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        }`}>
+                          {user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}
+                        </span>
+                        {user.department && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{user.department}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <p>No members found matching your criteria</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
+
 
       {/* Announcement Modal */}
       {showAnnouncementModal && (

@@ -13,7 +13,7 @@ import {
   User,
   Bell
 } from 'lucide-react';
-import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, where, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
 const Navigation = () => {
@@ -33,6 +33,23 @@ const Navigation = () => {
 
   const isActive = (path) => location.pathname === path;
 
+  const handleDeleteNotification = async (notificationId) => {
+    try {
+      await deleteDoc(doc(db, 'notifications', notificationId));
+      // Refresh notifications after deletion
+      const snap = await getDocs(query(
+        collection(db, 'notifications'), 
+        where('userId', '==', currentUser.uid),
+        orderBy('createdAt', 'desc'), 
+        limit(10)
+      ));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setNotifications(list);
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
+  };
+
   useEffect(() => {
     if (!currentUser || ['/', '/login', '/register'].includes(location.pathname)) return;
     
@@ -50,14 +67,14 @@ const Navigation = () => {
         console.warn('Failed to load notifications', e);
       }
     };
+    
+    // Initial load
     loadNotifications();
     
-    // Set up real-time listener
-    const unsubscribe = () => {
-      // Real-time updates can be added here if needed
-    };
+    // Poll every 5 seconds for updates (works with ad blockers)
+    const interval = setInterval(loadNotifications, 5000);
     
-    return unsubscribe;
+    return () => clearInterval(interval);
   }, [currentUser, location.pathname]);
 
   // Don't show navigation on landing page, login, or register
@@ -150,12 +167,21 @@ const Navigation = () => {
                       <div className="px-4 py-3 text-sm text-gray-500">No notifications</div>
                     )}
                     {notifications.map((n) => (
-                      <div key={n.id} className={`px-4 py-3 border-b last:border-b-0 ${!n.read ? 'bg-blue-50' : ''}`}>
-                        <div className="text-sm font-semibold text-gray-800">{n.title}</div>
-                        <div className="text-xs text-gray-600 mt-1">{n.content}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {n.createdAt?.toDate ? new Date(n.createdAt.toDate()).toLocaleString() : ''}
+                      <div key={n.id} className={`px-4 py-3 border-b last:border-b-0 ${!n.read ? 'bg-blue-50' : ''} relative`}>
+                        <div className="pr-12">
+                          <div className="text-sm font-semibold text-gray-800">{n.title}</div>
+                          <div className="text-xs text-gray-600 mt-1">{n.content}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {n.createdAt?.toDate ? new Date(n.createdAt.toDate()).toLocaleString() : ''}
+                          </div>
                         </div>
+                        <button
+                          onClick={() => handleDeleteNotification(n.id)}
+                          className="absolute top-2 right-2 p-1 hover:bg-gray-200 rounded opacity-100"
+                          title="Delete notification"
+                        >
+                          <X className="h-3 w-3 text-gray-500" />
+                        </button>
                       </div>
                     ))}
                   </div>
