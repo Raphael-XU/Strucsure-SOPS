@@ -1,8 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { getFunctions } from 'firebase/functions';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 
 // Your Firebase configuration
@@ -25,5 +25,16 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
+
+// Check for environment variable to connect to emulators
+if (process.env.REACT_APP_FIREBASE_USE_EMULATORS === 'true') {
+  console.log("Connecting to Firebase Emulators");
+  const host = 'localhost';
+
+  connectAuthEmulator(auth, `http://${host}:9099`);
+  connectFirestoreEmulator(db, host, 8080);
+  connectFunctionsEmulator(functions, host, 5001);
+}
+
 
 export default app;

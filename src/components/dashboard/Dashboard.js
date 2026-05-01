@@ -724,6 +724,10 @@ const Dashboard = () => {
                         professionals and student leaders, we move toward one mission: to grow,
                         lead, innovate, and serve with integrity for the betterment of our campus
                         and the communities we touch.
+                        Xavier Circle of Information Technology Students - XCITeS is a co-curricular
+                        student organization that aims to promote order and unite the IT community
+                        through the Projects and Initiatives geared toward the IT students of the
+                        Xavier University-College of Computer Studies.
                       </p>
 
                       <div className="mt-8">
