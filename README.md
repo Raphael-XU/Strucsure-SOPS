@@ -15,6 +15,20 @@ This repo is split into four areas so the group can own and review them separate
 
 Root files tie the project together: [`firebase.json`](firebase.json), [`docker-compose.yml`](docker-compose.yml), and this README. Run **`firebase`** CLI commands from the repository root so paths resolve correctly.
 
+## Group repository (ITCC15)
+
+**Official group remote:** [https://github.com/2502-XU-ITCC15-1B/Group-E-SOPS](https://github.com/2502-XU-ITCC15-1B/Group-E-SOPS)
+
+From your machine (after [GitHub authentication](https://docs.github.com/en/get-started/git-basics/set-up-git)):
+
+```bash
+git remote add group-e https://github.com/2502-XU-ITCC15-1B/Group-E-SOPS.git
+# skip "add" if remote already exists
+git push -u group-e main
+```
+
+Use feature branches and `develop` per your course milestone; `main` should stay the stable integration target your instructor expects.
+
 ## Quick start
 
 From the repo root:
@@ -31,7 +45,3 @@ npm run deploy
 ```
 
 Docker (frontend + emulators): see [`docker-compose.yml`](docker-compose.yml).
-
-## Detailed documentation
-
-See [`docs/SYSTEM_WORKFLOW_DOCUMENTATION.md`](docs/SYSTEM_WORKFLOW_DOCUMENTATION.md).
