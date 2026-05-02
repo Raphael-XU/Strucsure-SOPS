@@ -1,6 +1,8 @@
 node_modules/
 .cache/
 build/
+frontend/build/
+firestore-debug.log
 .DS_Store
 .env
 .env.local

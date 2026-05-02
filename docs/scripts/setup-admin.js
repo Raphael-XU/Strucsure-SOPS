@@ -6,14 +6,14 @@
  * 2. Updating the Firestore user document
  * 
  * Usage:
- *   node scripts/setup-admin.js <user-email> <role>
- * 
+ *   node docs/scripts/setup-admin.js <user-email> <role>
+ *
  * Example:
- *   node scripts/setup-admin.js admin@example.com admin
+ *   node docs/scripts/setup-admin.js admin@example.com admin
  */
 
 const admin = require('firebase-admin');
-const serviceAccount = require('../serviceAccountKey.json');
+const serviceAccount = require('../../serviceAccountKey.json');
 
 // Initialize Firebase Admin
 admin.initializeApp({
@@ -77,8 +77,8 @@ async function setupAdminUser(email, role = 'admin') {
 // Get command line arguments
 const args = process.argv.slice(2);
 if (args.length < 1) {
-  console.error('\n❌ Usage: node scripts/setup-admin.js <user-email> [role]');
-  console.error('   Example: node scripts/setup-admin.js admin@example.com admin\n');
+  console.error('\n❌ Usage: node docs/scripts/setup-admin.js <user-email> [role]');
+  console.error('   Example: node docs/scripts/setup-admin.js admin@example.com admin\n');
   process.exit(1);
 }
 

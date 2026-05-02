@@ -1,6 +1,6 @@
 /**
  * One-off analysis: compare raw sheet vs expected person rows.
- * Run: node scripts/analyze-xcites-import.js
+ * Run: node docs/scripts/analyze-xcites-import.js
  */
 const XLSX = require('xlsx');
 const fs = require('fs');
