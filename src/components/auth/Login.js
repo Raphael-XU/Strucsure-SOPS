@@ -54,6 +54,7 @@ const Login = () => {
     try {
       setLoading(true);
       await login(data.email, data.password, accessToken);
+      await login(data.email, data.password);
       toast.success('Login successful!');
       navigate('/dashboard');
     } catch (error) {

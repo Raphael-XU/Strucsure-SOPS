@@ -9,6 +9,7 @@ import Dashboard from './components/dashboard/Dashboard';
 import MemberProfile from './components/members/MemberProfile';
 import AdminPanel from './components/admin/AdminPanel';
 import ExecutivePanel from './components/executive/ExecutivePanel';
+import Directory from './components/directory/Directory';
 import Navigation from './components/layout/Navigation';
 import './App.css';
 
@@ -89,6 +90,17 @@ function App() {
                   <Navigation />
                   <main className="min-h-screen bg-gray-50">
                     <MemberProfile />
+                  </main>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/directory" 
+              element={
+                <ProtectedRoute>
+                  <Navigation />
+                  <main className="min-h-screen bg-gray-50">
+                    <Directory />
                   </main>
                 </ProtectedRoute>
               } 

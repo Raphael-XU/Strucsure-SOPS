@@ -6,12 +6,12 @@ import {
   X, 
   Home, 
   Users, 
-  Settings, 
   Shield, 
   Briefcase,
   LogOut,
   User,
-  Bell
+  Bell,
+  BookOpen
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, limit, where, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
@@ -117,6 +117,18 @@ const Navigation = () => {
             >
               <User className="inline h-4 w-4 mr-1" />
               Profile
+            </Link>
+
+            <Link
+              to="/directory"
+              className={`px-3 py-2 rounded-md text-sm font-medium ${
+                isActive('/directory')
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              <BookOpen className="inline h-4 w-4 mr-1" />
+              Directory
             </Link>
 
             {userRole === 'executive' && (
@@ -241,6 +253,19 @@ const Navigation = () => {
             >
               <User className="inline h-4 w-4 mr-2" />
               Profile
+            </Link>
+
+            <Link
+              to="/directory"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                isActive('/directory')
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+              onClick={() => setIsOpen(false)}
+            >
+              <BookOpen className="inline h-4 w-4 mr-2" />
+              Directory
             </Link>
 
             {userRole === 'executive' && (

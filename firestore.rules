@@ -106,6 +106,12 @@ service cloud.firestore {
       allow read, write: if isExecutiveOrAdmin();
     }
 
+    // Member directory (imported from Excel/CSV) — any signed-in user can read/update.
+    // (Tighten to isExecutiveOrAdmin() if only officers should import.)
+    match /directory/{entryId} {
+      allow read, write: if isAuthenticated();
+    }
+
     // Default rule - deny all other access
     match /{document=**} {
       allow read, write: if false;
