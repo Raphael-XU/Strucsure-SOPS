@@ -30,3 +30,7 @@ coverage/
 
 # Optional: large local specs (uncomment if PDFs should stay only on your machine)
 # *.pdf
+
+# Local-only course / workflow notes (not part of the hand-in codebase)
+docs/GIT-FOUR-MEMBER-PUSHES.md
+docs/MILESTONE-3-4-CHECKLIST.md
